@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Agenda Folgas e Férias</title>
+<meta name="theme-color" content="#0f766e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Folgas">
+<link rel="manifest" href="data:application/json,{"name":"Agenda Folgas e Férias","short_name":"Folgas","start_url":".","display":"standalone","background_color":"#0f766e","theme_color":"#0f766e"}">
+<style>
+:root{--bg:#f5f7fa;--card:#ffffff;--text:#1e293b;--primary:#0f766e;--primary-light:#ccfbf1;--accent:#0d9488;--soft:#f1f5f9;--danger:#dc2626;--warning:#f59e0b;--border:#e2e8f0}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);padding-bottom:72px}
+header{background:linear-gradient(135deg,#0f766e,#0d9488);color:#fff;padding:16px 18px 20px}
+header h1{margin:0;font-size:20px;font-weight:700}
+header p{margin:4px 0 0;font-size:13px;opacity:.85}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;padding:14px}
+.stat{background:var(--card);border-radius:14px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.stat strong{display:block;font-size:24px;font-weight:700;color:var(--primary)}
+.stat span{font-size:12px;color:#64748b;margin-top:2px;display:block}
+.card{background:var(--card);margin:0 14px 12px;border-radius:14px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.card h2{margin:0 0 12px;font-size:16px;font-weight:600}
+label{display:block;font-size:13px;font-weight:500;margin:10px 0 5px;color:#334155}
+input,select{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:10px;font-size:14px;background:#fff}
+input:focus,select:focus{outline:none;border-color:var(--primary)}
+.btn{background:var(--primary);color:#fff;border:none;padding:12px;border-radius:10px;font-weight:600;font-size:14px;cursor:pointer;width:100%;margin-top:10px}
+.btn:active{opacity:.9}
+.btn-soft{background:var(--soft);color:var(--primary);border:none}
+.btn-danger{background:#fef2f2;color:var(--danger);border:none;padding:6px 10px;border-radius:6px;font-size:12px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.entry{border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px;background:#fff}
+.entry-title{font-weight:600;font-size:14px;display:flex;justify-content:space-between;align-items:center}
+.meta{font-size:12px;color:#64748b;margin-top:4px}
+.badge{background:var(--primary-light);color:var(--primary);padding:3px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.badge-red{background:#fef2f2;color:var(--danger)}
+.badge-green{background:#dcfce7;color:#166534}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#fff;display:flex;border-top:1px solid var(--border);padding:4px 0 env(safe-area-inset-bottom)}
+.nav button{flex:1;padding:8px 2px;border:none;background:none;font-size:10px;color:#64748b;display:flex;flex-direction:column;align-items:center;gap:2px}
+.nav button.active{color:var(--primary);font-weight:600}
+.nav button span{font-size:18px}
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 18px;border-radius:10px;font-size:13px;display:none;z-index:99;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+.panel{display:none !important}
+.panel.active{display:block !important}
+.notice{background:var(--primary-light);padding:10px 12px;border-radius:10px;font-size:12px;color:var(--primary);margin-bottom:12px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal-day{text-align:center;padding:8px 2px;border-radius:8px;font-size:13px}
+.cal-head{font-weight:600;font-size:11px;color:#64748b;padding:6px 0}
+.cal-today{background:var(--primary);color:#fff;font-weight:700}
+.cal-folga{background:#d1fae5}
+.cal-ferias{background:#fef3c7}
+.cal-sabado{background:#bfdbfe}
+.cal-feriado{background:#fca5a5}
+.section-title{font-size:13px;font-weight:600;color:#64748b;margin:16px 0 8px;text-transform:uppercase;letter-spacing:.5px}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="headerNome">Agenda Folgas e Férias</h1>
+  <p id="headerSub">Gestão pessoal</p>
+</header>
+<div class="stats">
+  <div class="stat"><strong id="saldoFolgas">0</strong><span>Folgas por gozar</span></div>
+  <div class="stat"><strong id="feriasRestantes">22</strong><span>Férias por gozar</span></div>
+  <div class="stat" id="statSabados" style="display:none"><strong id="totalSabados">0 €</strong><span>Sábados este mês</span></div>
+  <div class="stat"><strong id="anoAtual">2026</strong><span>Ano de trabalho</span></div>
+</div>
+
+<div id="panel-cal" class="panel active">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <button class="btn-soft" style="width:auto;padding:8px 14px" onclick="mudarMes(-1)">◀</button>
+      <h2 id="tituloMes" style="margin:0">Novembro 2026</h2>
+      <button class="btn-soft" style="width:auto;padding:8px 14px" onclick="mudarMes(1)">▶</button>
+    </div>
+    <div id="calendario"></div>
+    <div style="display:flex;gap:16px;margin-top:14px;font-size:12px;color:#64748b;justify-content:center">
+      <span style="color:#059669">■ Folga</span><span style="color:#f59e0b">■ Férias</span><span style="color:#ef4444">■ Feriado</span><span id="legendaSabado" style="color:#3b82f6">■ Sábado</span>
+    </div>
+  </div>
+</div>
+
+<div id="panel-folgas" class="panel">
+  <div class="card">
+    <h2>Folgas por gozar</h2>
+    <div class="notice">As folgas são assumidas como gozadas. Só marcas as que não folgaste.</div>
+    <div class="section-title">Marcar manualmente</div>
+    <div class="row">
+      <div><label>Período</label><select id="fgPeriodo"><option value="manhã">Manhã</option><option value="tarde">Tarde</option></select></div>
+      <div><label>Duração</label><select id="fgDur"><option value="0.5">Meio dia</option><option value="1">Dia inteiro</option></select></div>
+    </div>
+    <button class="btn" onclick="marcarNaoGozei()">Não folguei</button>
+    <div style="margin-top:12px"><label>Data da última folga</label><input id="fgData" readonly onclick="abrirCalendarioApp(this)"></div>
+    <div class="section-title" style="margin-top:16px">Folgas por gozar</div>
+    <div id="listaFolgas"></div>
+  </div>
+</div>
+
+<div id="panel-descontar" class="panel">
+  <div class="card">
+    <h2>Descontar folga</h2>
+    <div class="notice">Escolhe a data em que vais gozar a primeira folga disponível. Depois de descontar, a próxima fica disponível.</div>
+    <div class="notice">As folgas disponíveis aparecem em baixo. Clica em Descontar na própria data.</div>
+    <div class="section-title">Folgas disponíveis (não gozadas)</div>
+    <div id="listaDisponiveis"></div>
+    <div class="section-title">Já descontadas</div>
+    <div id="listaDescontos"></div>
+  </div>
+</div>
+
+<div id="panel-ferias" class="panel">
+  <div class="card">
+    <h2>Marcar férias</h2>
+    <label>Ano</label>
+    <select id="frAno">
+      <option value="2026">2026</option>
+      <option value="2027">2027</option>
+      <option value="2028">2028</option>
+    </select>
+    <div class="notice">Clica nos campos de data para abrir o calendário. Podes marcar datas de qualquer ano.</div>
+    <div class="row">
+      <div><label>Início</label><input id="frInicio" readonly onclick="abrirCalendarioApp(this)"></div>
+      <div><label>Fim</label><input id="frFim" readonly onclick="abrirCalendarioApp(this)"></div>
+    </div>
+    <label style="margin-top:12px"><input id="frDois" type="checkbox" onchange="document.getElementById('periodo2').style.display=this.checked?'block':'none'" style="width:auto;margin-right:6px"> Dois períodos distintos</label>
+    <div id="periodo2" style="display:none;margin-top:10px">
+      <div class="row">
+        <div><label>Início 2.º</label><input id="frInicio2" readonly onclick="abrirCalendarioApp(this)"></div>
+        <div><label>Fim 2.º</label><input id="frFim2" readonly onclick="abrirCalendarioApp(this)"></div>
+      </div>
+    </div>
+    <label>Descrição</label><input id="frObs" placeholder="Ex: férias de verão">
+    <button class="btn" onclick="guardarFerias()">Guardar férias</button>
+    <div class="section-title">Férias marcadas</div>
+    <div id="listaFerias"></div>
+  </div>
+</div>
+
+<div id="panel-sabados" class="panel">
+  <div class="card">
+    <h2>Sábados</h2>
+    <div class="notice">Todos os sábados contam por defeito. Marca apenas os que não trabalhaste.</div>
+    <div class="row">
+      <div><label>Data</label><input id="sbData" readonly onclick="abrirCalendarioApp(this)"></div>
+      <div><label>Valor (€)</label><input id="sbValor" type="number" step="0.01"></div>
+    </div>
+    <button class="btn" onclick="marcarNaoTrabalhou()">Não trabalhei</button>
+    <button class="btn btn-soft" onclick="marcarTrabalhadoNasFerias()" style="margin-top:8px">Trabalhei nas férias</button>
+    <div class="notice" style="margin-top:10px">Por defeito todos os sábados contam. Só marcas os que não trabalhaste.</div>
+    <div class="section-title">Este mês</div>
+    <div id="listaSabados"></div>
+  </div>
+</div>
+
+<div id="panel-mais" class="panel">
+  <div class="card">
+    <h2>Definições</h2>
+    <label>Nome</label><input id="cfgNome" placeholder="O seu nome">
+    <label>Empresa</label><input id="cfgEmpresa" placeholder="Nome da empresa">
+    <div class="row">
+      <div><label>Dias de férias úteis</label><input id="cfgDias" type="number" value="22"></div>
+      <div><label>Ano de trabalho</label><input id="cfgAno" type="number" readonly style="background:#f1f5f9;color:#64748b"></div>
+    </div>
+    <label><input id="cfgSabadosAtivo" type="checkbox" style="width:auto;margin-right:6px" onchange="document.getElementById('cfgValorBox').style.display=this.checked?'block':'none'"> Trabalhar aos sábados</label>
+    <div id="cfgValorBox" style="display:none">
+      <label>Valor por sábado (€)</label><input id="cfgValorSabado" type="number" placeholder="Ex: 50" onfocus="this.select()">
+    </div>
+    <label>Dia da folga automática</label>
+    <select id="cfgDia">
+      <option value="1">Segunda</option>
+      <option value="2" selected>Terça</option>
+      <option value="3">Quarta</option>
+      <option value="4">Quinta</option>
+      <option value="5">Sexta</option>
+    </select>
+    <label>Período da folga</label>
+    <select id="cfgPeriodo"><option value="manhã">Manhã</option><option value="tarde">Tarde</option></select>
+    <label style="margin-top:12px"><input id="cfgPinAtivo" type="checkbox" style="width:auto;margin-right:6px" onchange="document.getElementById('cfgPinBox').style.display=this.checked?'block':'none'"> Ativar PIN</label>
+    <div id="cfgPinBox" style="display:none;margin-top:8px">
+      <label>PIN (4 dígitos)</label>
+      <input id="cfgPin" type="password" maxlength="4" placeholder="****">
+    </div>
+    <button class="btn" onclick="guardarDefinicoes()">Guardar definições</button>
+    <button class="btn btn-soft" onclick="exportarDados()" style="margin-top:8px">Exportar dados</button>
+    <button class="btn btn-soft" onclick="document.getElementById('importFile').click()" style="margin-top:8px">Importar dados</button>
+    <input type="file" id="importFile" accept=".json" style="display:none" onchange="importarDados(this)">
+    
+  </div>
+  <div class="card">
+    <h2>Relatório para empresa</h2>
+    <div class="notice" id="noticeEmpresa">J. Oliveira e Domingues, Lda.</div>
+    <label>Ano do relatório</label>
+    <select id="relAno">
+      <option value="2026">2026</option>
+      <option value="2027">2027</option>
+      <option value="2028">2028</option>
+    </select>
+    <button class="btn" onclick="gerarRelatorioFerias()">Relatório de Férias (PDF)</button>
+    <button class="btn btn-soft" onclick="gerarRelatorioFolgas()" style="margin-top:8px">Relatório de Folgas (PDF)</button>
+  </div>
+  <div class="card">
+    <h2>Feriados à quinta-feira</h2>
+    <div class="notice">Se um feriado cair à quinta, confirma se é feriado ou se trabalhas (feira municipal).</div>
+    <div id="listaQuintas"></div>
+  </div>
+  <div class="card">
+    <h2>Resumo do ano</h2>
+    <div id="estatisticas"></div>
+  </div>
+</div>
+
+<nav class="nav">
+  <button onclick="mostrar('cal')" id="nav-cal" class="active"><span>📅</span>Cal.</button>
+  <button onclick="mostrar('folgas')" id="nav-folgas"><span>➕</span>Folgas</button>
+  <button onclick="mostrar('descontar')" id="nav-descontar"><span>➖</span>Descontar</button>
+  <button onclick="mostrar('ferias')" id="nav-ferias"><span>☀️</span>Férias</button>
+  <button onclick="mostrar('sabados')" id="nav-sabados" style="display:none"><span>💶</span>Sábados</button>
+  <button onclick="mostrar('mais')" id="nav-mais"><span>☰</span>Mais</button>
+</nav>
+<div id="toast" class="toast"></div>
+<div id="pinScreen" style="display:none;position:fixed;inset:0;background:#0f766e;z-index:999;align-items:center;justify-content:center;flex-direction:column">
+  <h2 style="color:#fff;margin-bottom:20px">Introduza o PIN</h2>
+  <div id="pinDots" style="font-size:32px;letter-spacing:12px;color:#fff;margin-bottom:20px">○ ○ ○ ○</div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:240px">
+    <button onclick="digitarPin('1')" style="padding:20px;font-size:20px;border:none;border-radius:10px;background:#fff">1</button>
+    <button onclick="digitarPin('2')" style="padding:20px;font-size:20px;border:none;border-radius:10px;background:#fff">2</button>
+    <button onclick="digitarPin('3')" style="padding:20px;font-size:20px;border:none;border-radius:10px;background:#fff">3</button>
+    <button onclick="digitarPin('4')" style="padding:20px;font-size:20px;border:none;border-radius:10px;background:#fff">4</button>
+    <button onclick="digitarPin('5')" style="padding:20px;font-size:20px;border:none;border-radius:10px;background:#fff">5</button>
+    <button onclick="digitarPin('6')" style="padding:20px;font-size:20px;border:none;border-radius:10px;background:#fff">6</button>
+    <button onclick="digitarPin('7')" style="padding:20px;font-size:20px;border:none;border-radius:10px;background:#fff">7</button>
+    <button onclick="digitarPin('8')" style="padding:20px;font-size:20px;border:none;border-radius:10px;background:#fff">8</button>
+    <button onclick="digitarPin('9')" style="padding:20px;font-size:20px;border:none;border-radius:10px;background:#fff">9</button>
+    <button onclick="limparPin()" style="padding:20px;font-size:14px;border:none;border-radius:10px;background:#fef2f2;color:#dc2626">Limpar</button>
+    <button onclick="digitarPin('0')" style="padding:20px;font-size:20px;border:none;border-radius:10px;background:#fff">0</button>
+    <div></div>
+  </div>
+</div>
+
+<!-- Calendário próprio da app -->
+<div id="calAppModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;justify-content:center">
+  <div style="background:#fff;width:100%;max-width:400px;border-radius:16px 16px 0 0;padding:16px;max-height:80vh">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <button onclick="mudarMesApp(-1)" style="background:#f1f5f9;border:none;padding:8px 14px;border-radius:8px">◀</button>
+      <strong id="tituloMesApp">Novembro 2026</strong>
+      <button onclick="mudarMesApp(1)" style="background:#f1f5f9;border:none;padding:8px 14px;border-radius:8px">▶</button>
+    </div>
+    <div id="gradeCalApp" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center"></div>
+    <button onclick="fecharCalApp()" style="width:100%;margin-top:14px;padding:12px;background:#f1f5f9;border:none;border-radius:10px">Fechar</button>
+  </div>
+</div>
+
+<script>
+const KEY='agenda_profissional';
+let dados=JSON.parse(localStorage.getItem(KEY)||localStorage.getItem(KEY+'_backup')||'null')||{folgas:[],descontos:[],ferias:[],sabados:[],config:{nome:'',diasFerias:22,ano:new Date().getFullYear(),valorSabado:50,diaFolga:2,periodo:'manhã'}};
+// Try to load from IndexedDB if localStorage is empty
+if(!dados.folgas.length){
+  carregarIndexedDB().then(idb => {
+    if(idb && idb.folgas && idb.folgas.length){
+      dados = idb;
+      guardar();
+      render();
+    }
+  });
+}
+dados.config = Object.assign({nome:'',empresa:'J. Oliveira e Domingues, Lda.',diasFerias:22,ano:new Date().getFullYear(),valorSabado:50,diaFolga:2,periodo:'manhã',sabadosAtivo:false,pinAtivo:true,pin:'1234'}, dados.config||{}); dados.config.ano = new Date().getFullYear();
+
+function guardar(){
+  try {
+    localStorage.setItem(KEY,JSON.stringify(dados));
+    localStorage.setItem(KEY+'_backup',JSON.stringify(dados));
+    // Also save to IndexedDB for more persistence
+    const req = indexedDB.open('agendaDB', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('dados');
+    req.onsuccess = e => {
+      const db = e.target.result;
+      const tx = db.transaction('dados', 'readwrite');
+      tx.objectStore('dados').put(dados, 'agenda');
+    };
+  } catch(e) { console.error('Erro ao guardar:', e); }
+}
+function carregarIndexedDB(){
+  return new Promise(resolve => {
+    const req = indexedDB.open('agendaDB', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('dados');
+    req.onsuccess = e => {
+      const db = e.target.result;
+      const tx = db.transaction('dados', 'readonly');
+      const getReq = tx.objectStore('dados').get('agenda');
+      getReq.onsuccess = () => resolve(getReq.result);
+      getReq.onerror = () => resolve(null);
+    };
+    req.onerror = () => resolve(null);
+  });
+}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',6000)}
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function fmt(s){return s?new Date(s+'T12:00:00').toLocaleDateString('pt-PT'):''}
+function feriadosNacionais(ano){
+  return [
+    ano+'-01-01', // Ano Novo
+    ano+'-04-25', // Liberdade
+    ano+'-05-01', // Trabalhador
+    ano+'-06-10', // Portugal
+    ano+'-08-15', // Assunção
+    ano+'-10-05', // República
+    ano+'-11-01', // Todos os Santos
+    ano+'-12-01', // Restauração
+    ano+'-12-08', // Imaculada
+    ano+'-12-25'  // Natal
+  ];
+}
+function eFeriado(data){
+  const ano = +data.slice(0,4);
+  const feriados = feriadosNacionais(ano);
+  if(!feriados.includes(data)) return false;
+  const d = new Date(data+'T12:00:00');
+  // Se for quinta-feira, precisa de confirmação
+  if(d.getDay() === 4){
+    const confirmado = dados.feriadosConfirmados?.includes(data);
+    return confirmado !== false; // assume feriado a menos que marcado como trabalhado
+  }
+  return true;
+}
+function gerarFolgas(){
+  const ano=dados.config.ano, dia=dados.config.diaFolga;
+  const inicio=new Date(ano,0,1,12);
+  const fim=new Date(ano,11,31,12);
+  let d=new Date(inicio);
+  while(d<=fim){
+    if(d.getDay()===dia){
+      const s=iso(d);
+      if(!dados.folgas.some(f=>f.data===s)){
+        dados.folgas.push({id:Date.now()+Math.random(), data:s, dur:0.5, obs:'Automática ('+dados.config.periodo+')', auto:true, gozada:true});
+      }
+    }
+    d.setDate(d.getDate()+1);
+  }
+  dados.folgas.sort((a,b)=>a.data.localeCompare(b.data));
+  guardar();
+}
+function saldoFolgas(){
+  const ano=dados.config.ano;
+  // Só conta as que foram marcadas como "não gozada"
+  return dados.folgas.filter(f => +f.data.slice(0,4)===ano && f.gozada===false).reduce((s,f)=>s+(f.dur||0.5),0);
+}
+function feriasGozadas(){return dados.ferias.filter(f=>+f.inicio.slice(0,4)===dados.config.ano).reduce((s,f)=>s+(f.uteis||0),0)}
+function contarUteis(a,b){if(!a||!b||a>b)return 0;let d=new Date(a+'T12:00:00'),fim=new Date(b+'T12:00:00'),n=0;while(d<=fim){const w=d.getDay();if(w&&w!==6)n++;d.setDate(d.getDate()+1)}return n}
+function render(){
+  try {
+  if(document.getElementById('statSabados')) document.getElementById('statSabados').style.display = dados.config.sabadosAtivo ? '' : 'none';
+  if(document.getElementById('legendaSabado')) document.getElementById('legendaSabado').style.display = dados.config.sabadosAtivo ? '' : 'none';
+  if(document.getElementById('nav-sabados')) document.getElementById('nav-sabados').style.display = dados.config.sabadosAtivo ? '' : 'none';
+  gerarFolgas();
+  const ano=dados.config.ano;
+  document.getElementById('anoAtual').textContent=ano;
+  document.getElementById('headerNome').textContent=dados.config.nome||'Agenda Folgas e Férias';
+  document.getElementById('headerSub').textContent=dados.config.nome?'Gestão de '+dados.config.nome:'Gestão pessoal';
+  document.getElementById('saldoFolgas').textContent=saldoFolgas().toFixed(1).replace('.0','');
+  const fg=feriasGozadas();
+  document.getElementById('feriasRestantes').textContent=Math.max(0,dados.config.diasFerias-fg);
+  const agora=new Date();
+  let totalSb=0,qtd=0,d=new Date(agora.getFullYear(),agora.getMonth(),1),fim=new Date(agora.getFullYear(),agora.getMonth()+1,0);
+  while(d<=fim){if(dados.config.sabadosAtivo && d.getDay()===6){const s=iso(d);if(!dados.sabados.some(x=>x.data===s&&x.naoTrabalhado)){totalSb+=dados.config.valorSabado;qtd++}}d.setDate(d.getDate()+1)}
+  document.getElementById('totalSabados').textContent=totalSb+' € ('+qtd+')';
+  const folgasAno=dados.folgas.filter(f=>+f.data.slice(0,4)===ano && f.gozada===false);
+  if(document.getElementById('listaFolgas')) document.getElementById('listaFolgas').innerHTML=folgasAno.length?folgasAno.map(f=>`<div class="entry"><div class="entry-title">${fmt(f.data)} <span class="badge">Meio dia</span></div><div class="meta">${f.obs}</div><button class="btn-danger" onclick="apagar('folgas',${f.id})">Eliminar</button></div>`).join(''):'<div class="meta">Nenhuma folga por gozar.</div>';
+  const disponiveis = dados.folgas.filter(f => +f.data.slice(0,4)===ano && f.gozada===false && !dados.descontos.some(d=>d.data===f.data));
+  if(document.getElementById('listaDisponiveis')) document.getElementById('listaDisponiveis').innerHTML = disponiveis.length ? disponiveis.map(f=>`<div class="entry"><div class="meta">${f.obs}</div><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" style="flex:1;padding:8px" onclick="descontarFolgaDireta('${f.id}')">Descontar</button><button class="btn-danger" style="flex:1" onclick="eliminarFolga('${f.id}')">Eliminar</button></div><div class="entry-title" style="margin-top:8px">${fmt(f.data)} <span class="badge">Meio dia</span></div></div>`).join('') : '<div class="meta">Nenhuma folga disponível.</div>';
+  if(document.getElementById('listaDescontos')){
+    const mostrar = dados.descontos.slice(0, window.mostrarTodosDescontos ? undefined : 3);
+    let html = mostrar.map(d=>`<div class="entry"><div class="entry-title">${fmt(d.data)} <span class="badge">${d.dur===1?'Dia':'Meio dia'}</span></div><div class="meta">${d.obs||''}</div><button class="btn-danger" onclick="apagar('descontos',${d.id})">Eliminar</button></div>`).join('');
+    if(dados.descontos.length > 3) html += `<button class="btn btn-soft" style="margin-top:8px" onclick="window.mostrarTodosDescontos=!window.mostrarTodosDescontos;render()">${window.mostrarTodosDescontos?'Ver menos':'Ver todas ('+dados.descontos.length+')'}</button>`;
+    document.getElementById('listaDescontos').innerHTML = dados.descontos.length ? html : '<div class="meta">Nenhuma descontada.</div>';
+  }
+  if(document.getElementById('listaFerias')) document.getElementById('listaFerias').innerHTML=dados.ferias.length?dados.ferias.map(f=>`<div class="entry"><div class="entry-title">${fmt(f.inicio)} — ${fmt(f.fim)}</div><div class="meta">${f.obs||'Férias'} · <b>${f.uteis} dias úteis</b></div><button class="btn-danger" onclick="apagar('ferias',${f.id})">Eliminar</button></div>`).join(''):'<div class="meta">Nenhuma férias marcada.</div>';
+  const sabs=[];d=new Date(agora.getFullYear(),agora.getMonth(),1);while(d<=fim){if(d.getDay()===6)sabs.push(iso(d));d.setDate(d.getDate()+1)}
+  if(document.getElementById('listaSabados')) document.getElementById('listaSabados').innerHTML=sabs.map(s=>{const nao=dados.sabados.find(x=>x.data===s&&x.naoTrabalhado);return `<div class="entry"><div class="entry-title">${fmt(s)} ${nao?'<span class="badge badge-red">Não trabalhado</span>':'<span class="badge badge-green">'+dados.config.valorSabado+' €</span>'}</div></div>`}).join('');
+  const quintas = feriadosNacionais(dados.config.ano).filter(d => new Date(d+'T12:00:00').getDay()===4);
+  if(document.getElementById('listaQuintas')) document.getElementById('listaQuintas').innerHTML = quintas.length ? quintas.map(d => {
+    const confirmado = dados.feriadosConfirmados?.includes(d);
+    return `<div class="entry"><div class="entry-title">${fmt(d)}</div><button class="btn-soft" onclick="toggleQuinta('${d}')">${confirmado?'Marcar como trabalhado':'É feriado'}</button></div>`;
+  }).join('') : '<div class="meta">Nenhum feriado à quinta este ano.</div>';
+  document.getElementById('estatisticas').innerHTML=`<div class="entry"><b>Folgas por gozar:</b> ${saldoFolgas().toFixed(1).replace('.0','')}</div><div class="entry"><b>Férias já gozadas:</b> ${fg} dias</div><div class="entry"><b>Férias por gozar:</b> ${Math.max(0,dados.config.diasFerias-fg)} dias</div><div class="entry"><b>Sábados este mês:</b> ${totalSb} €</div>`;
+  renderCalendario();
+  } catch(e) { console.error(e); }
+  document.getElementById('cfgNome').value=dados.config.nome||''; document.getElementById('cfgEmpresa').value=dados.config.empresa||'J. Oliveira e Domingues, Lda.';
+  document.getElementById('cfgDias').value=dados.config.diasFerias;
+  dados.config.ano = new Date().getFullYear();
+ document.getElementById('cfgAno').value = dados.config.ano;
+  document.getElementById('cfgSabadosAtivo').checked=!!dados.config.sabadosAtivo; document.getElementById('cfgValorBox').style.display=dados.config.sabadosAtivo?'block':'none'; document.getElementById('cfgValorSabado').value=dados.config.valorSabado||'';
+  document.getElementById('cfgDia').value=dados.config.diaFolga;
+  document.getElementById('cfgPeriodo').value=dados.config.periodo;document.getElementById('cfgPinAtivo').checked=!!dados.config.pinAtivo;document.getElementById('cfgPinBox').style.display=dados.config.pinAtivo?'block':'none';document.getElementById('cfgPin').value=dados.config.pin||'';
+  document.getElementById('sbValor').value=dados.config.valorSabado||0;
+  document.getElementById('statSabados').style.display = dados.config.sabadosAtivo ? 'block' : 'none';
+  document.getElementById('nav-sabados').style.display = dados.config.sabadosAtivo ? '' : 'none';
+  const panelSab = document.getElementById('panel-sabados');
+  if(panelSab) panelSab.style.display = dados.config.sabadosAtivo ? '' : 'none';
+document.getElementById('fgData').value=ultimaFolga();
+if(!document.getElementById('sbData').value) document.getElementById('sbData').value=ultimoSabado();
+// Primeira folga disponível para descontar
+const primeiraDisp = dados.folgas.filter(f => +f.data.slice(0,4)===ano && f.gozada===false && !dados.descontos.some(d=>d.data===f.data)).sort((a,b)=>a.data.localeCompare(b.data))[0];
+if(primeiraDisp && !document.getElementById('dsData').value) document.getElementById('dsData').value = primeiraDisp.data;
+}
+let vistaMes = new Date();
+function mudarMes(delta){ vistaMes.setMonth(vistaMes.getMonth()+delta); renderCalendario(); }
+function renderCalendario(){
+  const y=vistaMes.getFullYear(), m=vistaMes.getMonth();
+  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  document.getElementById('tituloMes').textContent = meses[m]+' '+y;
+  const p=new Date(y,m,1,12), off=(p.getDay()+6)%7, ini=new Date(y,m,1-off,12);
+  const hoje=iso(new Date());
+  let h='<div class="cal-grid">';
+  ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].forEach(d=>h+=`<div class="cal-head">${d}</div>`);
+  for(let i=0;i<42;i++){
+    const d=new Date(ini); d.setDate(ini.getDate()+i); const s=iso(d);
+    let cls='cal-day', extra='';
+    if(s===hoje) cls+=' cal-today';
+    const emFerias = dados.ferias.some(f=>s>=f.inicio && s<=f.fim);
+  const feriado = eFeriado(s);
+  const sabTrabalhado = dados.sabados.some(x=>x.data===s && x.trabalhadoNasFerias);
+  const descontada = dados.descontos.some(x=>x.data===s);
+  const folga = dados.folgas.find(f=>f.data===s);
+  if(descontada) cls+=' cal-folga';
+  else if(feriado) cls+=' cal-feriado';
+  else if(emFerias && !sabTrabalhado) cls+=' cal-ferias';
+  else if(folga) cls+=' cal-folga';
+  else if(dados.config.sabadosAtivo && d.getDay()===6 && !dados.sabados.some(x=>x.data===s && x.naoTrabalhado)) cls+=' cal-sabado';
+    if(d.getMonth()!==m) extra='opacity:.4;';
+    const meioDia = folga && folga.dur === 0.5 && !feriado;
+    h+=`<div class="${cls}" style="${extra}cursor:pointer;position:relative" onclick="abrirDia('${s}')">${d.getDate()}${meioDia?'<span style="position:absolute;bottom:2px;right:2px;font-size:8px;color:#059669">½</span>':''}</div>`;
+  }
+  h+='</div>';
+  document.getElementById('calendario').innerHTML=h;
+}
+function abrirDia(s){
+  const f=dados.folgas.find(x=>x.data===s);
+  const fer=dados.ferias.find(x=>s>=x.inicio&&s<=x.fim);
+  let msg=fmt(s)+'\n';
+  const descontos = dados.descontos.filter(x=>x.data===s);
+  if(descontos.length){
+    const origens = descontos.map(d=>d.origem?fmt(d.origem):'').filter(o=>o);
+    if(origens.length > 1) msg+='• Folga gozada (de '+origens.join(' e ')+')\n';
+    else if(origens.length === 1) msg+='• Folga gozada (de '+origens[0]+')\n';
+    else msg+='• Folga gozada\n';
+  }
+  if(f && f.gozada===false) msg+='• Folga por gozar\n';
+  if(fer) msg+='• Férias\n';
+  if(new Date(s+'T12:00:00').getDay()===6 && !dados.sabados.some(x=>x.data===s&&x.naoTrabalhado)) msg+='• Sábado trabalhado\n';
+  if(msg===fmt(s)+'\n') msg+='Sem registos';
+  toast(msg.replace(/\n/g,' · '));
+}
+function marcarNaoGozei(){
+  const data=document.getElementById('fgData').value;
+  if(!data) return toast('Escolhe uma data');
+  const periodo = document.getElementById('fgPeriodo').value;
+  const dur = +document.getElementById('fgDur').value;
+  let f = dados.folgas.find(x => x.data === data);
+  if(f){
+    f.gozada = false;
+    f.dur = dur;
+    f.obs = 'Não gozei (' + periodo + (dur===1?', dia inteiro':'') + ')';
+  } else {
+    dados.folgas.push({id:Date.now(), data, dur, obs:'Não gozei ('+periodo+(dur===1?', dia inteiro':'')+')', auto:false, gozada:false});
+  }
+  guardar();
+  toast('Marcado: ' + fmt(data) + ' (' + (dur===1?'dia inteiro':'meio dia') + ')');
+  const d = new Date(data+'T12:00:00');
+  vistaApp = new Date(d.getFullYear(), d.getMonth(), 1);
+  render(); 
+}
+let folgaADescontar = null;
+function descontarFolgaDireta(id){
+  const f = dados.folgas.find(x => x.id == id);
+  if(!f) return;
+  folgaADescontar = f;
+  // Show duration choice modal
+  const modal = document.createElement('div');
+  modal.id = 'durModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;border-radius:16px;padding:20px;width:90%;max-width:320px">
+    <h3 style="margin:0 0 16px">Descontar folga</h3>
+    <p style="margin:0 0 16px;color:#64748b">Cada data = meio dia<br>2 meios dias = 1 dia inteiro</p>
+    <button onclick="escolherDuracao(1)" style="width:100%;padding:14px;background:#0f766e;color:#fff;border:none;border-radius:10px;font-weight:600;margin-bottom:8px">Dia inteiro (2 meios dias)</button>
+    <button onclick="escolherDuracao(0.5)" style="width:100%;padding:14px;background:#f1f5f9;color:#0f766e;border:none;border-radius:10px;font-weight:600">Meio dia (1 data)</button>
+  </div>`;
+  document.body.appendChild(modal);
+}
+function escolherDuracao(dur){
+  document.getElementById('durModal').remove();
+  folgaADescontar.dur = dur;
+  let input = document.getElementById('inputDesconto');
+  if(!input){
+    input = document.createElement('input');
+    input.id = 'inputDesconto';
+    input.style.display = 'none';
+    document.body.appendChild(input);
+  }
+  input.value = '';
+  const originalEscolher = window.escolherDataApp;
+  window.escolherDataApp = function(s){
+    if(folgaADescontar){
+      if(folgaADescontar.dur === 1){
+        // Full day = discount 2 half-days
+        const folgasDisponiveis = dados.folgas.filter(f => +f.data.slice(0,4)===dados.config.ano && f.gozada===false).sort((a,b)=>a.data.localeCompare(b.data));
+        const folgasParaDescontar = folgasDisponiveis.slice(0, 2);
+        folgasParaDescontar.forEach(f => {
+          dados.descontos.unshift({id:Date.now()+Math.random(), data:s, dur:0.5, obs:'Folga de '+fmt(f.data), origem:f.data});
+          f.gozada = true;
+        });
+        toast('Descontado dia inteiro (2 meios dias) para ' + fmt(s));
+      } else {
+        // Half day
+        dados.descontos.unshift({id:Date.now(), data:s, dur:0.5, obs:'Folga de '+fmt(folgaADescontar.data), origem:folgaADescontar.data});
+        folgaADescontar.gozada = true;
+        toast('Descontado meio dia para ' + fmt(s));
+      }
+      guardar();
+      folgaADescontar = null;
+      fecharCalApp();
+      render();
+    }
+    window.escolherDataApp = originalEscolher;
+  };
+  abrirCalendarioApp(input);
+}
+function eliminarFolga(id){
+  if(confirm('Eliminar esta folga?')){
+    dados.folgas = dados.folgas.filter(f => f.id != id);
+    guardar();
+    toast('Eliminada');
+    render();
+  }
+}
+function descontarDe(data){ document.getElementById('dsData').value=data; descontarFolga(); }
+function descontarFolga(){const data=document.getElementById('dsData').value,dur=+document.getElementById('dsDur').value;if(!data)return toast('Escolhe uma data');dados.descontos.unshift({id:Date.now(),data,dur});guardar();toast('Descontado');render()}
+function guardarFerias(){const i1=document.getElementById('frInicio').value,f1=document.getElementById('frFim').value,obs=document.getElementById('frObs').value;if(!i1||!f1)return toast('Preenche as datas');const u1=contarUteis(i1,f1)||1;dados.ferias.unshift({id:Date.now(),inicio:i1,fim:f1,obs:obs||'Férias',uteis:u1});if(document.getElementById('frDois').checked){const i2=document.getElementById('frInicio2').value,f2=document.getElementById('frFim2').value;if(i2&&f2){const u2=contarUteis(i2,f2)||1;dados.ferias.unshift({id:Date.now()+1,inicio:i2,fim:f2,obs:obs||'2.º período',uteis:u2})}}guardar();toast('Férias guardadas');render()}
+function marcarTrabalhadoNasFerias(){
+  const data=document.getElementById('sbData').value;
+  if(!data) return toast('Escolhe a data');
+  const e=dados.sabados.find(x=>x.data===data);
+  if(e) e.trabalhadoNasFerias=true;
+  else dados.sabados.push({id:Date.now(),data,trabalhadoNasFerias:true});
+  guardar();
+  toast('Marcado como trabalhado nas férias');
+  render();
+}
+function marcarNaoTrabalhou(){const data=document.getElementById('sbData').value;if(!data)return toast('Escolhe a data');const e=dados.sabados.find(x=>x.data===data);if(e)e.naoTrabalhado=true;else dados.sabados.push({id:Date.now(),data,naoTrabalhado:true});guardar();toast('Marcado');render()}
+function apagar(tipo,id){if(confirm('Pretende eliminar?')){dados[tipo]=dados[tipo].filter(x=>x.id!=id);guardar();render()}}
+
+function exportarDados(){
+  const blob = new Blob([JSON.stringify(dados,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'folgas_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  toast('Dados exportados');
+}
+function importarDados(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try {
+      const imported = JSON.parse(e.target.result);
+      if(imported.folgas && imported.descontos && imported.ferias){
+        dados = imported;
+        guardar();
+        toast('Dados importados');
+        render();
+      } else toast('Ficheiro inválido');
+    } catch(err) { toast('Erro ao importar'); }
+  };
+  reader.readAsText(file);
+}
+let pinDigitado = '';
+function digitarPin(n){
+  if(pinDigitado.length >= 4) return;
+  pinDigitado += n;
+  document.getElementById('pinDots').textContent = '●'.repeat(pinDigitado.length) + '○'.repeat(4-pinDigitado.length);
+  if(pinDigitado.length === 4){
+    const pinCorreto = dados.config.pin || '1234';
+    if(pinDigitado === pinCorreto){
+      document.getElementById('pinScreen').style.display = 'none';
+      pinDigitado = '';
+      render();
+    } else {
+      toast('PIN incorreto');
+      pinDigitado = '';
+      document.getElementById('pinDots').textContent = '○○○○';
+    }
+  }
+}
+function limparPin(){ pinDigitado = ''; document.getElementById('pinDots').textContent = '○ ○ ○ ○'; }
+function verificarPin(){
+  if(dados.config.pinAtivo && dados.config.pin){
+    document.getElementById('pinScreen').style.display = 'flex';
+  }
+}
+function guardarDefinicoes(){dados.config.nome=document.getElementById('cfgNome').value; dados.config.empresa=document.getElementById('cfgEmpresa').value;dados.config.diasFerias=+document.getElementById('cfgDias').value||22;dados.config.ano=+document.getElementById('cfgAno').value||new Date().getFullYear();dados.config.sabadosAtivo=document.getElementById('cfgSabadosAtivo').checked; dados.config.valorSabado=+document.getElementById('cfgValorSabado').value||0;dados.config.diaFolga=+document.getElementById('cfgDia').value; dados.folgas=dados.folgas.filter(f=>!f.auto);dados.config.periodo=document.getElementById('cfgPeriodo').value;dados.config.pinAtivo=document.getElementById('cfgPinAtivo').checked;dados.config.pin=document.getElementById('cfgPin').value;guardar();toast('Definições guardadas'); if(document.getElementById('noticeEmpresa')) document.getElementById('noticeEmpresa').textContent=dados.config.empresa||'J. Oliveira e Domingues, Lda.'; render()}
+function gerarRelatorioFolgas(){
+  const ano = document.getElementById('relAno').value;
+  const nome = dados.config.nome || 'Trabalhador';
+  const hoje = new Date().toLocaleDateString('pt-PT');
+  const folgasAno = dados.folgas.filter(f => +f.data.slice(0,4) === +ano && f.gozada === false).sort((a,b)=>a.data.localeCompare(b.data));
+  let html = `<html><head><title>Folgas por Gozar ${ano}</title>
+  <style>@page{size:A4;margin:20mm}body{font-family:Arial,sans-serif;font-size:12pt}h1{font-size:16pt;text-align:center}table{width:100%;border-collapse:collapse;margin:5mm 0}th,td{border:1px solid #333;padding:3mm}th{background:#f0f0f0}.assinatura{margin-top:15mm;display:flex;justify-content:space-between}.assinatura div{width:40%;text-align:center;border-top:1px solid #333;padding-top:2mm}</style></head><body>
+  <h1>Folgas por Gozar ${ano}</h1>
+  <p><b>Empresa:</b> ' + (dados.config.empresa || 'J. Oliveira e Domingues, Lda.') + '</p>
+  <p><b>Trabalhador:</b> ${nome}</p>
+  <p><b>Data:</b> ${hoje}</p>
+  <table><tr><th>Data</th><th>Duração</th><th>Observações</th></tr>`;
+  folgasAno.forEach(f => html += `<tr><td>${fmt(f.data)}</td><td>Meio dia</td><td>${f.obs||'Folga'}</td></tr>`);
+  if(!folgasAno.length) html += '<tr><td colspan="3">Nenhuma folga por gozar</td></tr>';
+  html += `</table><p><b>Total:</b> ${folgasAno.reduce((s,f)=>s+(f.dur||0.5),0)}</p>
+  <div class="assinatura"><div>O Trabalhador</div><div>A Empresa</div></div>
+  <p style="margin-top:10mm;font-size:9pt;color:#666">Documento gerado em ${hoje}</p></body></html>`;
+  const w = window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),300);
+}
+function gerarRelatorioFerias(){
+  const ano = document.getElementById('relAno').value;
+  const feriasAno = dados.ferias.filter(f => +f.inicio.slice(0,4) === +ano);
+  const nome = dados.config.nome || 'Trabalhador';
+  const hoje = new Date().toLocaleDateString('pt-PT');
+  let html = `<html><head><title>Pedido de Férias ${ano}</title>
+  <style>
+    @page { size: A4; margin: 20mm; }
+    body { font-family: Arial, sans-serif; font-size: 12pt; line-height: 1.4; }
+    h1 { font-size: 16pt; text-align: center; margin-bottom: 5mm; }
+    h2 { font-size: 13pt; border-bottom: 1px solid #333; padding-bottom: 2mm; }
+    table { width: 100%; border-collapse: collapse; margin: 5mm 0; }
+    th, td { border: 1px solid #333; padding: 3mm; text-align: left; }
+    th { background: #f0f0f0; }
+    .assinatura { margin-top: 15mm; display: flex; justify-content: space-between; }
+    .assinatura div { width: 40%; text-align: center; border-top: 1px solid #333; padding-top: 2mm; }
+  </style></head><body>
+  <h1>Pedido de Férias ${ano}</h1>
+  <p><b>Empresa:</b> ' + (dados.config.empresa || 'J. Oliveira e Domingues, Lda.') + '</p>
+  <p><b>Trabalhador:</b> ${nome}</p>
+  <p><b>Data do pedido:</b> ${hoje}</p>
+  <h2>Períodos solicitados</h2>
+  <table>
+    <tr><th>Período</th><th>Dias úteis</th><th>Observações</th></tr>`;
+  let total = 0;
+  feriasAno.sort((a,b) => a.inicio.localeCompare(b.inicio));
+  feriasAno.forEach(f => {
+    total += f.uteis || 0;
+    html += `<tr><td>${fmt(f.inicio)} a ${fmt(f.fim)}</td><td>${f.uteis}</td><td>Férias</td></tr>`;
+  });
+  if(!feriasAno.length) html += '<tr><td colspan="3">Nenhum período marcado</td></tr>';
+  html += `</table>
+  <p><b>Total de dias úteis:</b> ${total}</p>
+  <p><b>Dias de férias anuais:</b> ${dados.config.diasFerias}</p>
+  
+  <div class="assinatura">
+    <div>O Trabalhador</div>
+    <div>A Empresa</div>
+  </div>
+  <p style="margin-top:10mm;font-size:9pt;color:#666">Documento gerado em ${hoje}</p>
+  </body></html>`;
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 300);
+}
+function toggleQuinta(data){
+  if(!dados.feriadosConfirmados) dados.feriadosConfirmados = [];
+  const idx = dados.feriadosConfirmados.indexOf(data);
+  if(idx >= 0) dados.feriadosConfirmados.splice(idx, 1);
+  else dados.feriadosConfirmados.push(data);
+  guardar();
+  render();
+}
+function mostrar(p){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));document.getElementById('panel-'+p).classList.add('active');document.getElementById('nav-'+p).classList.add('active')}
+let campoAtivo = null;
+let vistaApp = new Date();
+function abrirCalendarioApp(input){
+  campoAtivo = input;
+  // Check if this is an end date field and there's a start date
+  let dataRef = input.value;
+  if(!dataRef && (input.id === 'frFim' || input.id === 'frFim2')){
+    const inicioId = input.id === 'frFim' ? 'frInicio' : 'frInicio2';
+    dataRef = document.getElementById(inicioId)?.value;
+  }
+  if(dataRef){
+    const d = new Date(dataRef+'T12:00:00');
+    vistaApp = new Date(d.getFullYear(), d.getMonth(), 1);
+  } else {
+    vistaApp = new Date();
+    vistaApp.setDate(1);
+  }
+  document.getElementById('calAppModal').style.display = 'flex';
+  renderCalApp();
+}
+function fecharCalApp(){ document.getElementById('calAppModal').style.display = 'none'; const t=document.getElementById('tempDataDesconto'); if(t) t.style.display='none'; }
+function mudarMesApp(delta){ vistaApp.setMonth(vistaApp.getMonth()+delta); renderCalApp(); }
+function renderCalApp(){
+  const y=vistaApp.getFullYear(), m=vistaApp.getMonth();
+  const meses=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+  document.getElementById('tituloMesApp').textContent = meses[m]+' '+y;
+  const p=new Date(y,m,1,12), off=(p.getDay()+6)%7, ini=new Date(y,m,1-off,12);
+  let h='';
+  ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].forEach(d=>h+=`<div style="font-size:11px;font-weight:600;color:#64748b;padding:6px 0">${d}</div>`);
+  for(let i=0;i<42;i++){
+    const d=new Date(ini); d.setDate(ini.getDate()+i);
+    const s=iso(d);
+    let bg = d.getMonth()!==m ? '#f8fafc' : '#fff';
+    let color = d.getMonth()!==m ? '#94a3b8' : '#1e293b';
+    // Highlight folgas (Tuesdays)
+    if(d.getDay()===dados.config.diaFolga && d.getMonth()===m) { bg='#d1fae5'; }
+    // Highlight Saturdays
+    if(d.getDay()===6 && d.getMonth()===m && dados.config.sabadosAtivo) { bg='#bfdbfe'; }
+    // Selected date
+    if(s === (campoAtivo?.value||'')) { bg='#0f766e'; color='#fff'; }
+    h+=`<div onclick="escolherDataApp('${s}')" style="padding:10px 2px;border-radius:8px;background:${bg};color:${color};cursor:pointer">${d.getDate()}</div>`;
+  }
+  document.getElementById('gradeCalApp').innerHTML = h;
+}
+function escolherDataApp(s){
+  if(campoAtivo){
+    campoAtivo.value = s;
+    campoAtivo.dataset.iso = s;
+    const d = new Date(s+'T12:00:00');
+    campoAtivo.setAttribute('data-display', d.toLocaleDateString('pt-PT'));
+    // Stay on the same month
+    vistaApp = new Date(d.getFullYear(), d.getMonth(), 1);
+  }
+  fecharCalApp();
+}
+
+function ultimaFolga(){
+  const dia = Number(dados.config.diaFolga) || 2;
+  const hoje = new Date();
+  let d = new Date(hoje);
+  for(let i=0; i<21; i++){
+    if(d.getDay() === dia) return iso(d);
+    d.setDate(d.getDate()-1);
+  }
+  return iso(hoje);
+}
+document.getElementById('fgData').value = ultimaFolga();
+document.getElementById('dsData').value = iso(new Date());
+function ultimoSabado(){
+  const hoje = new Date();
+  let d = new Date(hoje);
+  for(let i=0; i<14; i++){
+    if(d.getDay() === 6) return iso(d);
+    d.setDate(d.getDate()-1);
+  }
+  return iso(hoje);
+}
+document.getElementById('sbData').value = ultimoSabado();
+if(document.getElementById('frAno')) document.getElementById('frAno').value = dados.config.ano;
+if(document.getElementById('relAno')) document.getElementById('relAno').value = dados.config.ano;
+mostrar('cal');
+render();
+// Register service worker for PWA
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('data:text/javascript,self.addEventListener("fetch",e=>e.respondWith(fetch(e.request)))').catch(()=>{});
+}
+if(dados.config.pinAtivo) document.getElementById('pinScreen').style.display='flex';
+
+
+document.addEventListener('visibilitychange', () => { if(document.hidden) guardar(); });
+window.addEventListener('beforeunload', guardar);
+</script>
+</body>
+</html>
